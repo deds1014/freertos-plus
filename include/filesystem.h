@@ -7,6 +7,8 @@
 #define MAX_FS 16
 #define OPENFAIL (-1)
 
+
+//define the pointer of callback funtion
 typedef int (*fs_open_t)(void * opaque, const char * fname, int flags, int mode);
 
 /* Need to be called before using any other fs functions */
