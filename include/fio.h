@@ -10,6 +10,7 @@ enum open_types_t {
     O_CREAT = 4,
     O_TRUNC = 8,
     O_APPEND = 16,
+    O_LS = 7,
 };
 
 #define MAX_FDS 32
