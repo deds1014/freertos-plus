@@ -8,6 +8,8 @@
 #include "osdebug.h"
 #include "hash-djb2.h"
 
+int romfs_r[256];
+
 struct romfs_fds_t {
     const uint8_t * file;
     uint32_t cursor;
@@ -65,12 +67,16 @@ static off_t romfs_seek(void * opaque, off_t offset, int whence) {
     return offset;
 }
 
-const uint8_t * romfs_get_file_by_hash(const uint8_t * romfs, uint32_t h, uint32_t * len) {
+const uint8_t * romfs_get_file_by_hash(const uint8_t * romfs, uint32_t h, uint32_t * len/*void ?*/) 
+{
     const uint8_t * meta;
 
-    for (meta = romfs; get_unaligned(meta) && get_unaligned(meta + 4); meta += get_unaligned(meta + 4) + 8) {
-        if (get_unaligned(meta) == h) {
-            if (len) {
+    for (meta = romfs; get_unaligned(meta) && get_unaligned(meta + 4); meta += get_unaligned(meta + 4) + 8) //why?
+    {
+        if (get_unaligned(meta) == h) 
+        {
+            if (len) 
+            {
                 *len = get_unaligned(meta + 4);
             }
             return meta + 8;
@@ -80,23 +86,52 @@ const uint8_t * romfs_get_file_by_hash(const uint8_t * romfs, uint32_t h, uint32
     return NULL;
 }
 
-static int romfs_open(void * opaque, const char * path, int flags, int mode) {
-    uint32_t h = hash_djb2((const uint8_t *) path, -1);
+
+//this can be called by filesystem.c with callback pointer
+static int romfs_open(void * opaque, const char * path, int flags/*void*/, int mode/*void*/) 
+{
+    uint32_t h = hash_djb2((const uint8_t *) path, -1);//hash the file name
     const uint8_t * romfs = (const uint8_t *) opaque;
     const uint8_t * file;
-    int r = -1;
+    int r = -1, fnc = 0/*file number counter*/;
 
-    file = romfs_get_file_by_hash(romfs, h, NULL);
+    
+    if(flags == O_LS)
+    { 
+        const uint8_t * meta;
 
-    if (file) {
-        r = fio_open(romfs_read, NULL, romfs_seek, NULL, NULL);
-        if (r > 0) {
-            romfs_fds[r].file = file;
-            romfs_fds[r].cursor = 0;
-            fio_set_opaque(r, romfs_fds + r);
+        for (meta = romfs; get_unaligned(meta) && get_unaligned(meta + 4); meta += get_unaligned(meta + 4) + 8) //get the hash code
+        {
+            if (get_unaligned(meta)) //check if we get the hash code
+            {
+                r = fio_open(romfs_read, NULL, romfs_seek, NULL, NULL); // give that file a file descriptor
+                if (r > 0) 
+                {
+                    romfs_r[fnc++] = r; // store the file descriptor
+                    romfs_fds[r].file = meta + 8;
+                    romfs_fds[r].cursor = 0;
+                    fio_set_opaque(r, romfs_fds + r);
+                }
+            }
         }
+        return fnc;
     }
-    return r;
+    else
+    {
+        file = romfs_get_file_by_hash(romfs, h, NULL);
+
+        if (file) 
+        {
+            r = fio_open(romfs_read, NULL, romfs_seek, NULL, NULL);//only read and seek
+            if (r > 0)//this number will be discarded everytime this function ends, so it's possible that multiple files have the same r value(but not at the same time). 
+            {
+                romfs_fds[r].file = file;
+                romfs_fds[r].cursor = 0;
+                fio_set_opaque(r, romfs_fds + r);
+            }
+        }
+        return r;
+    }
 }
 
 void register_romfs(const char * mountpoint, const uint8_t * romfs) {
