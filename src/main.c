@@ -20,7 +20,7 @@
 /* _sromfs symbol can be found in main.ld linker script
  * it contains file system structure of test_romfs directory
  */
-extern const unsigned char _sromfs;
+extern const unsigned char _sromfs;//describe the structure of the romfs
 
 //static void setup_hardware();
 
@@ -116,7 +116,7 @@ void system_logger(void *pvParameters)
     int handle, error;
     const portTickType xDelay = 100000 / 100;
 
-    handle = host_action(SYS_OPEN, "output/syslog", 4);
+    handle = host_action(SYS_OPEN, "syslog", 4);
     if(handle == -1) {
         fio_printf(1, "Open file error!\n");
         return;
@@ -170,7 +170,7 @@ int main()
 	            (signed portCHAR *) "CLI",
 	            512 /* stack size */, NULL, tskIDLE_PRIORITY + 2, NULL);
 
-#if 0
+#if 1
 	/* Create a task to record system log. */
 	xTaskCreate(system_logger,
 	            (signed portCHAR *) "Logger",
