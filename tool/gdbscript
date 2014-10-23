@@ -3,4 +3,12 @@ target remote :3333
 
 b main
 
+
+break main.c:97
 c
+call host_action(SYS_OPEN, "syslog", 4)
+set var buf="test"
+break shell.c:198
+jump 98
+
+call host_action(SYS_WRITE, 1, (void *)pg, strlen(pg))
